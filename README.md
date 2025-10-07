@@ -1,132 +1,157 @@
-# 💰 KipuBankV2 — Bóveda Inteligente con Oráculo Chainlink
+# 💰 KipuBankV2 — Contrato Inteligente Mejorado con Control de Acceso y Oráculo Chainlink
 
-KipuBankV2 es una versión mejorada del contrato **KipuBank**, que actúa como una bóveda descentralizada para depósitos y retiros de ETH, con control de acceso por roles y cotización en tiempo real usando **Chainlink Price Feeds (ETH/USD)**.
-
-El contrato permite administrar saldos internos de usuarios, consultar su valor en USD, y controlar permisos de operadores (“tellers”) sin comprometer la seguridad de los fondos.
+**KipuBankV2** es una evolución del contrato original **KipuBank**, diseñado para ofrecer una bóveda más segura, escalable y precisa mediante la integración de **control de acceso avanzado**, **tipos personalizados**, y **conversión de valores en tiempo real** utilizando **Chainlink Price Feeds (ETH/USD)**.
 
 ---
 
-## 🚀 Características principales
+## 🚀 1. Mejoras realizadas y motivos
 
-- ✅ **Control de acceso** con roles de `Admin` y `Teller`.  
-- ✅ **Instancia del oráculo Chainlink** para obtener precios ETH/USD en tiempo real.  
-- ✅ **Declaraciones de tipos personalizados** (`type`, `enum`, `struct`).  
-- ✅ **Variables `constant` e `immutable`** para mayor eficiencia.  
-- ✅ **Mappings anidados** (`mapping(address => mapping(Currency => Ledger))`).  
-- ✅ **Conversión automática** entre decimales de ETH y USD.  
-- ✅ **Funciones seguras y limpias**: `deposit`, `withdraw`, `balanceInUSD`, etc.  
-- ✅ **Eventos y errores personalizados** para trazabilidad y claridad.
+### 🔐 Control de acceso por roles (`Admin` y `Teller`)
+- **Motivo:** En la versión original, cualquier usuario podía realizar operaciones básicas.  
+- **Mejora:** Se implementó un sistema de roles mediante *modificadores* `onlyAdmin` y `onlyTeller`.  
+  - Los administradores pueden agregar o eliminar otros administradores y operadores.  
+  - Los *tellers* (operadores) pueden mover fondos internos, previa autorización del usuario.  
+- **Beneficio:** Seguridad y separación de responsabilidades.
 
 ---
 
-## ⚙️ Descripción técnica
-
-- **Lenguaje:** Solidity `^0.8.24`
-- **Oráculo Chainlink:** ETH/USD  
-- **Red recomendada:** Sepolia Testnet (puede adaptarse a otras redes)
-- **Precio de referencia:** tomado de `AggregatorV3Interface.latestRoundData()`
-- **Monedas soportadas:** ETH (nativa) y USD (cotización virtual)
-- **Control de acceso:**
-  - `Admin`: puede agregar o quitar administradores y tellers.
-  - `Teller`: operador autorizado para mover fondos de clientes (previa aprobación).
+### 🧱 Declaraciones de tipos (`type`, `enum`, `struct`)
+- **Motivo:** El contrato anterior manejaba balances sin estructura clara.  
+- **Mejora:** Se introdujeron tipos personalizados para organizar los datos:
+  - `type AccountId is bytes32;`
+  - `enum Currency { NATIVE, USD }`
+  - `struct Ledger { uint256 balance; uint40 lastUpdated; }`
+- **Beneficio:** Código más legible, seguro y modular, facilitando futuras extensiones (como soporte multi-moneda).
 
 ---
 
-## 🧱 Instrucciones de despliegue
+### 🔗 Integración con Chainlink Price Feed
+- **Motivo:** La primera versión no permitía calcular el valor real en USD.  
+- **Mejora:** Se añadió una instancia de **`AggregatorV3Interface`** para consultar precios ETH/USD en tiempo real.  
+- **Beneficio:** Permite mostrar el valor actualizado de los depósitos en USD y mantener coherencia con el mercado.
 
-### 1. Compilación
+---
+
+### ⚙️ Mappings anidados y función de conversión
+- **Motivo:** Los balances y autorizaciones estaban limitados a un solo nivel.  
+- **Mejora:** 
+  - `mapping(address => mapping(Currency => Ledger))` para manejar múltiples monedas.  
+  - `mapping(address => mapping(address => uint256))` para *allowances* (autorizaciones).  
+  - Función `convertDecimals()` para ajustar unidades entre ETH (18), oráculo (8) y USD.  
+- **Beneficio:** Escalabilidad y precisión en las operaciones contables.
+
+---
+
+### 🧠 Optimización mediante constantes e inmutables
+- **Motivo:** La versión anterior usaba variables de almacenamiento costosas en gas.  
+- **Mejora:** Se agregaron variables `constant` e `immutable`:
+  - `USD_DECIMALS`, `MAX_DEPOSIT_WEI`, `VERSION`
+  - `priceFeed`, `ORACLE_DECIMALS` (definidos en el constructor)
+- **Beneficio:** Menor costo de gas y mayor eficiencia al ejecutar funciones repetitivas.
+
+---
+
+## ⚙️ 2. Instrucciones de despliegue e interacción
+
+### 🧩 Compilación en Remix
 
 1. Abre [Remix IDE](https://remix.ethereum.org/).
-2. Carga el contrato `src/KipuBankV2.sol`.
-3. En la pestaña **Solidity Compiler**, selecciona:
-   - **Versión:** `0.8.24` o superior.
-   - **Enable optimization:** ✅
+2. Carga el contrato:  
+3. En **Solidity Compiler**, selecciona:
+- Versión: `0.8.24` o superior.
+- Activa `Enable optimization`.
 
 ---
 
-### 2. Despliegue en testnet (Sepolia con MetaMask)
+### 🚀 Despliegue
 
+#### Testnet Sepolia con MetaMask
 1. Cambia el entorno a:
-2. Conéctate a la red **Sepolia Testnet**.
-3. Solicita ETH de prueba en uno de estos faucets:
-- 🔗 [https://faucet.chain.link/sepolia](https://faucet.chain.link/sepolia)
-- 🔗 [https://sepoliafaucet.com](https://sepoliafaucet.com)
-4. En Remix, en el constructor ingresa:
-- `initialAdmin`: tu dirección (por ejemplo, la de MetaMask)
-- `feedAddress`: **ETH/USD Sepolia Feed → `0x694AA1769357215DE4FAC081bf1f309aDC325306`**
-5. Haz clic en **Deploy** y espera la confirmación.
+2. Asegúrate de tener ETH de prueba en Sepolia:
+- Faucet: [https://faucet.chain.link/sepolia](https://faucet.chain.link/sepolia)
+3. En el constructor, usa:
+- `initialAdmin`: tu dirección.  
+- `feedAddress`: **ETH/USD Sepolia → `0x694AA1769357215DE4FAC081bf1f309aDC325306`**
+4. Haz clic en **Deploy** y confirma en MetaMask.
 
 ---
 
-## 💬 Interacción con el contrato
-
-Una vez desplegado, podrás usar las siguientes funciones desde Remix o cualquier interfaz web3:
+### 💬 Interacción básica
 
 | Función | Tipo | Descripción |
 |----------|------|-------------|
 | `deposit()` | `external payable` | Envía ETH al contrato y actualiza tu saldo interno. |
-| `withdraw(uint256 amountWei)` | `external` | Retira ETH de tu saldo interno. |
-| `balanceOf(address user)` | `view` | Devuelve el saldo en wei (ETH). |
-| `balanceInUSD(address user)` | `view` | Devuelve el valor equivalente en USD (usando Chainlink). |
+| `withdraw(uint256 amountWei)` | `external` | Retira ETH del saldo interno. |
+| `balanceOf(address user)` | `view` | Devuelve saldo en wei (ETH). |
+| `balanceInUSD(address user)` | `view` | Calcula el valor actual en USD (vía Chainlink). |
 | `addAdmin(address)` | `onlyAdmin` | Agrega un nuevo administrador. |
 | `addTeller(address)` | `onlyAdmin` | Agrega un operador autorizado. |
-| `approve(address spender, uint256 amount)` | `external` | Autoriza a un teller a mover tus fondos. |
-| `transferFrom(address owner, address to, uint256 amount)` | `external` | Permite mover fondos internos (si fue aprobado). |
-| `quoteNativeToUSD(uint256 weiAmount)` | `view` | Calcula el valor USD para cualquier cantidad de ETH. |
-
-### Ejemplo rápido en Remix
-
-1. **Depositar ETH**
-- Abre `deposit()`
-- En el campo “Value”, ingresa `1 ether`
-- Ejecuta la función → se registra tu depósito
-
-2. **Consultar saldo**
-- Llama a `balanceOf(<tu address>)` → muestra tu saldo en wei
-
-3. **Ver valor en USD**
-- Llama a `balanceInUSD(<tu address>)` → valor calculado según el feed
-
-4. **Retirar ETH**
-- Llama a `withdraw(1000000000000000000)` → (1 ETH en wei)
-- Recibirás el ETH de vuelta en tu cuenta
+| `approve(address spender, uint256 amount)` | `external` | Autoriza a otro usuario a mover tus fondos. |
+| `transferFrom(address owner, address to, uint256 amount)` | `external` | Transfiere saldo interno, si fue aprobado. |
 
 ---
 
-## 🧠 Notas de diseño
+### 💡 Ejemplo de uso rápido en Remix
 
-- El contrato usa **`immutable`** para variables del oráculo y **`constant`** para configuraciones estáticas, optimizando el gas.
-- El **oráculo Chainlink** garantiza precisión y resistencia a manipulaciones de precio.
-- Se aplican **modificadores de rol (`onlyAdmin`, `onlyTeller`)** para proteger funciones críticas.
-- Los **errores personalizados** reducen gas y mejoran legibilidad (por ejemplo, `NotAdmin()`, `InsufficientBalance()`).
-- El patrón **checks–effects–interactions** se respeta en los retiros.
+1. **Depositar ETH:**  
+- En el campo “Value”, ingresa `1 ether`.  
+- Ejecuta `deposit()` → tu saldo aumenta.  
 
----
+2. **Consultar saldo:**  
+- Llama a `balanceOf(<tu address>)` → muestra tu saldo interno.  
 
-## 🔒 Seguridad y consideraciones
+3. **Ver valor en USD:**  
+- Llama a `balanceInUSD(<tu address>)` → valor según el oráculo.  
 
-- No usar este contrato en producción sin auditoría profesional.  
-- Implementar **ReentrancyGuard** si se desea extender la lógica de retiro.  
-- Mantener actualizadas las direcciones de oráculos si se migra de red.  
-- No exponer claves privadas ni administrar fondos reales en redes principales.
+4. **Retirar fondos:**  
+- Ejecuta `withdraw(1000000000000000000)` → (equivale a 1 ETH).  
 
 ---
 
-## 🧾 Ejemplo de despliegue (Sepolia)
+## 🧩 3. Notas de diseño y *trade-offs*
 
-| Parámetro | Valor |
-|------------|--------|
-| `initialAdmin` | `0xC37...73d4a` |
-| `feedAddress` | `0x694AA1769357215DE4FAC081bf1f309aDC325306` |
-| **Contrato desplegado en:** | `0xYourContractAddressHere` |
-| **Red:** | Sepolia Testnet |
+### 🔒 Seguridad
+- Se usa el patrón **Checks–Effects–Interactions** en `withdraw` para prevenir *reentrancy*.  
+- No se incluyó `ReentrancyGuard` para mantener el gas bajo, pero puede añadirse fácilmente.  
+- El oráculo Chainlink se valida en el constructor; si se usa una dirección incorrecta, la transacción revierte.  
+
+---
+
+### ⚙️ Diseño modular
+- Los tipos personalizados (`enum`, `struct`, `type`) facilitan la extensión del contrato a más monedas o activos tokenizados.
+- Los *mappings anidados* permiten llevar registros internos por usuario y moneda sin depender de ERC20 externos.
+
+---
+
+### 💸 Trade-offs de diseño
+| Decisión | Beneficio | Costo o limitación |
+|-----------|------------|--------------------|
+| Uso de `immutable` y `constant` | Eficiencia en gas | Inmutables no pueden cambiar tras despliegue |
+| Integración directa de Chainlink | Datos confiables en USD | Depende de disponibilidad del feed en la red |
+| Control de acceso interno | Mayor seguridad | Mayor complejidad en despliegue y gestión de roles |
+| Uso de `receive()` para depósitos automáticos | Comodidad | Posible ingreso accidental sin metadata |
+| Conversión de decimales | Precisión en cotizaciones | Ligero aumento de gas en cálculos |
+
+---
+
+## 📋 Resumen general
+
+| Elemento | Descripción |
+|-----------|-------------|
+| **Nombre del contrato:** | `KipuBankV2` |
+| **Lenguaje:** | Solidity ^0.8.24 |
 | **Oráculo:** | Chainlink ETH/USD |
+| **Red recomendada:** | Sepolia Testnet |
+| **Roles:** | `Admin`, `Teller` |
+| **Monedas:** | ETH (nativa), USD (virtual) |
+| **Lógica principal:** | Depósitos, retiros y cotización en tiempo real |
+| **Autor:** | Johann Cañar Muñoz |
 
 ---
 
-## 👨‍💻 Autor
+## 👨‍💻 Autor y créditos
 
-**Christian Cañar**  
+Desarrollado por **Christian Cañar**  
 Proyecto académico: *KipuBankV2 – Contrato inteligente con integración Chainlink*  
 © 2025 — Todos los derechos reservados.
 
